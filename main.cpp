@@ -10,7 +10,7 @@
 #include "vec2f.hpp"
 
 #include "simulator.hpp"
-#include "simulator_cpu_single.hpp"
+#include "simulator_cpu.hpp"
 
 const int windowW = 1280;
 const int windowH = 720;
@@ -41,7 +41,7 @@ Simulator* sim = nullptr;
 void init_simulation()
 {
   // Init simulator
-  sim = new CPUSimulatorSingle();
+  sim = new SimulatorCPU();
   sim->Init(particles, windowW, windowH);
 }
 

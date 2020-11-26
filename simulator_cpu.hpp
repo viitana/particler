@@ -3,7 +3,7 @@
 #include "simulator.hpp"
 
 // CPUSimulatorSingle represents a single-core CPU particle physics simulator
-class CPUSimulatorSingle : public Simulator
+class SimulatorCPU : public Simulator
 {
 public:
   void Init(int particles, int area_width, int area_height)
