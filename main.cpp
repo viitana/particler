@@ -7,72 +7,77 @@
 #include <GL/freeglut.h>
 #include <iostream>
 
-#include "vec2f.hpp"
+#include "packages/plf_nanotimer/plf_nanotimer.hpp"
 
 #include "simulator.hpp"
-#include "simulator_cpu.hpp"
+#include "simulator_single_cpu.hpp"
+#include "simulator_multi_cpu.hpp"
+#include "simlator_single_simd.hpp"
+#include "simlator_multi_simd.hpp"
+
+#include <immintrin.h>
+#include <limits>
 
 const int windowW = 1280;
 const int windowH = 720;
 
-const int particles = 1200;
-const float gravity = 0.00000001f;
+int particles = 1000;
+const float gravity = 0.01f;
 
-// FPS limiting
 const bool limit_refresh = false;
-auto last_refresh = std::chrono::system_clock::now();
-auto last_stats = std::chrono::system_clock::now();
-float refresh_rate = 60;
-std::chrono::microseconds refresh_delay_us((int)(1000000.f / refresh_rate));
 
-vec2f* positions = nullptr;
+const double refresh_rate = 200;
+const double refresh_delay_us = 1000000. / refresh_rate;
+const double stats_rate =  1;
+const double stats_delay_us = 1000000. / stats_rate;
 
-std::chrono::milliseconds stats_delay_ms(1000);
+double last_refresh_us = 0;
+double last_stats_us = 0;
+plf::nanotimer timer;
+
+float* positions = nullptr;
+
 unsigned iterations = 0u;
-
-struct Particle
-{
-  vec2f position;
-  vec2f velocity;
-};
 
 Simulator* sim = nullptr;
 
 void init_simulation()
 {
   // Init simulator
-  sim = new SimulatorCPU();
-  sim->Init(particles, windowW, windowH);
+  sim = new SimulatorSingleCPU();
+  //sim = new SimulatorMultiCPU();
+  //sim = new SimulatorSingleSIMD();
+  //sim = new SimulatorMultiSIMD();
+
+  particles = sim->Init(particles, windowW, windowH);
 }
 
 void wait_for_refresh()
 {
   // Check time
-  auto since_last_refresh = std::chrono::system_clock::now() - last_refresh;
+  double since_last_refresh_us = timer.get_elapsed_us() - last_refresh_us;
 
   // Wait till next refresh
-  if (since_last_refresh < refresh_delay_us)
-  {
-    std::this_thread::sleep_for(refresh_delay_us - since_last_refresh);
-    last_refresh = std::chrono::system_clock::now();
-  } 
+  plf::microsecond_delay(refresh_delay_us - since_last_refresh_us);
+  last_refresh_us = timer.get_elapsed_us();
 }
 
 void do_stats()
 {
   // Check time
-  auto since_last_stats = std::chrono::system_clock::now() - last_stats;
+  auto since_last_stats_us = timer.get_elapsed_us() - last_stats_us;
 
   // Show some stats if delay has been reached
-  if (since_last_stats > stats_delay_ms)
+  if (since_last_stats_us > stats_delay_us)
   {
-    unsigned fps = iterations / (stats_delay_ms.count() / 1000);
-    unsigned ops = particles * particles * fps;
+    unsigned fps = iterations / (stats_delay_us / 1000000);
+    unsigned long long particles_long = particles;
+    unsigned long long interactions = particles_long * particles_long * fps;
 
-    std::cout << "fps: " << fps << " - ops/s: " << ops << std::endl;
+    std::cout << "fps: " << fps << " - interactions/s: " << interactions << std::endl;
 
     iterations = 0u;
-    last_stats = std::chrono::system_clock::now();
+    last_stats_us = timer.get_elapsed_us();
   }
 }
 
@@ -93,18 +98,25 @@ void update()
   glutPostRedisplay();
 }
 
-void display()
+void render()
 {
   glClear(GL_COLOR_BUFFER_BIT);
 	glColor3f(1.0, 0.0, 0.0);
 
 	glBegin(GL_POINTS);
 
-  if (positions == nullptr) return;
+  if (positions == nullptr)
+  {
+    std::cout << "Particle pointer is null" << std::endl;
+    return;
+  }
 
   for (unsigned i = 0; i < particles; i++)
   {
-    glVertex2f(positions[i].x, positions[i].y);
+    glVertex2f(
+      positions[i],
+      positions[particles + i]
+    );
   }
 
 	glEnd();
@@ -126,6 +138,8 @@ int main(int argc, char **argv)
 {
   std::cout << "Starting particles" << std::endl;
 
+  timer.start();
+
   init_simulation();
 
   glutInit(&argc, argv);
@@ -135,7 +149,7 @@ int main(int argc, char **argv)
   glutInitWindowSize(windowW, windowH);
   glutCreateWindow("particles");
 
-  glutDisplayFunc(display);
+  glutDisplayFunc(render);
   glutIdleFunc(update);
 
   init_display();
