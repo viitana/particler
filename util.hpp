@@ -18,10 +18,8 @@ namespace util
   {
     for (unsigned i = 0; i < count; i++)
     {
-      positions_x[i] = 0.5f * (rand() % width);
-      positions_y[i] = 0.5f * (rand() % height);
-
-      static_cast<float>(rand()) /static_cast<float>(RAND_MAX);
+      positions_x[i] = static_cast<float>(width) * static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+      positions_y[i] = static_cast<float>(height) * static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
       velocities_x[i] = 0;
       velocities_y[i] = 0;
     }
