@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION "3.18")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+
+project(particles LANGUAGES CXX CUDA)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# Prefer the legacy OpenGL library over GLVND as it does not seem to work with freeglut
+set(OpenGL_GL_PREFERENCE LEGACY)
+
+set(CUDA_SEPARABLE_COMPILATION ON)
+
+add_subdirectory(src)

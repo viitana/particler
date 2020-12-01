@@ -1,0 +1,39 @@
+
+# CPP sources
+file(GLOB SRC_CPP
+    "*.hpp"
+    "*.cpp"
+)
+
+# CUDA sources
+file(GLOB SRC_CUDA
+    "*.cuh"
+    "*.cu"
+)
+
+add_subdirectory(freeglut)
+
+# Main executable
+add_executable(particles ${SRC_CPP})
+
+# Require OpenGL
+find_package(OpenGL REQUIRED)
+
+# Include headers for OpenGL and freeglut
+include_directories (${OPENGL_INCLUDE_DIRS} freeglut/include)
+
+
+# CUDA parts, compiled separately as a lib
+add_library(particles-cuda "${SRC_CUDA}")
+
+# Various separate compilation properties for CUDA
+set_target_properties(particles-cuda PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_property(TARGET particles-cuda PROPERTY CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(particles-cuda PROPERTIES CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+
+# Which real and virtual architectures to generate CUDA code for
+# 60,61,62 = maxwell; 70,72 = volta; 75 = turing; 80 = ampere
+set_property(TARGET particles-cuda PROPERTY CUDA_ARCHITECTURES 60 61 62 70 72)
+
+# Link everything
+target_link_libraries(particles ${OPENGL_LIBRARIES} freeglut_static particles-cuda)
