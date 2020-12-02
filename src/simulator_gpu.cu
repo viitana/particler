@@ -13,22 +13,42 @@ inline void check(cudaError_t err, const char* context) {
 }
 #define CHECK(x) check(x, #x)
 
-// __global__ void update_kernel()
-// {
-//   int i = blockIdx.x;
-//   int j = threadIdx.x;
+__global__ void velocities(float* positions_velocities, int count, float gravity)
+{
+  int i = CUDA_BLOCK_SIZE * blockIdx.x + threadIdx.x;
 
-//   if (i == j) return;
+  float* positions_x = positions_velocities;
+  float* positions_y = positions_velocities + (1 * count);
+  float* velocities_x = positions_velocities + (2 * count);
+  float* velocities_y = positions_velocities + (3 * count);
 
-//   float diff_x = positions_x[j] - positions_x[i];
-//   float diff_y = positions_y[j] - positions_y[i];
+  for (unsigned j = 0; j < count; j++)
+  {
+    if (i == j) continue;
 
-//   float diff_len_sq = diff_x * diff_x + diff_y * diff_y;
-//   float mult = gravity / diff_len_sq;
+    float diff_x = positions_x[j] - positions_x[i];
+    float diff_y = positions_y[j] - positions_y[i];
 
-//   velocities_x[i] += mult * diff_x;
-//   velocities_y[i] += mult * diff_y;
-// }
+    float diff_len_sq = diff_x * diff_x + diff_y * diff_y;
+    float mult = gravity / diff_len_sq;
+
+    velocities_x[i] += mult * diff_x;
+    velocities_y[i] += mult * diff_y;
+    }
+}
+
+__global__ void positions(float* positions_velocities, int count, double timestep)
+{
+  int i = CUDA_BLOCK_SIZE * blockIdx.x + threadIdx.x;
+
+  float* positions_x = positions_velocities;
+  float* positions_y = positions_velocities + (1 * count);
+  float* velocities_x = positions_velocities + (2 * count);
+  float* velocities_y = positions_velocities + (3 * count);
+
+  positions_x[i] += velocities_x[i] * timestep;
+  positions_y[i] += velocities_y[i] * timestep;
+}
 
 
 int SimulatorGPU::Init(int particles, int area_width, int area_height)
@@ -38,18 +58,23 @@ int SimulatorGPU::Init(int particles, int area_width, int area_height)
   // Init particles
   srand(2277);
 
-  // util::init_particles_random(
-  //   positions_x,
-  //   positions_y,
-  //   velocities_x,
-  //   velocities_y,
-  //   count,
-  //   area_width,
-  //   area_height
-  // );
+  positions_velocities = new float[4 * count];
 
+  util::init_particles_circle(
+    positions_velocities,
+    positions_velocities + 1 * count,
+    positions_velocities + 2 * count,
+    positions_velocities + 3 * count,
+    count,
+    area_width,
+    area_height
+  );
+
+  // Allocate GPU memory
   CHECK(cudaMalloc((void**)&positions_velocities_GPU, 4 * count * sizeof(float)));
 
+  // Copy data to GPU
+  CHECK(cudaMemcpy(positions_velocities_GPU, positions_velocities, 4 * count * sizeof(float), cudaMemcpyHostToDevice));
 
   // Start timestep timer
   timer.start();
@@ -59,37 +84,28 @@ int SimulatorGPU::Init(int particles, int area_width, int area_height)
 
 float* SimulatorGPU::Update(float gravity)
 {
-  // double start = timer.get_elapsed_ns();
+  double start = timer.get_elapsed_ns();
 
-  // int blocks = count / CUDA_BLOCK_SIZE;
+  int blocks = count / CUDA_BLOCK_SIZE;
 
-  // update_kernel<<<CUDA_BLOCK_SIZE, blocks>>>();
-  // cudaDeviceSynchronize();
+  float* positions_x = positions_velocities;
+  float* positions_y = positions_velocities + 1 * count;
+  float* velocities_x = positions_velocities + 2 * count;
+  float* velocities_y = positions_velocities + 3 * count;
 
-  // // Compute velocities
-  // for (unsigned i = 0; i < count; i++)
-  // for (unsigned j = 0; j < count; j++)
-  // {
-  //   if (i == j) continue;
+  velocities<<<blocks, CUDA_BLOCK_SIZE>>>(positions_velocities_GPU, count, gravity);
+  CHECK(cudaGetLastError());
+  CHECK(cudaDeviceSynchronize());
 
-  //   float diff_x = positions_x[j] - positions_x[i];
-  //   float diff_y = positions_y[j] - positions_y[i];
+  double timestep = (timer.get_elapsed_ns() - start) * 0.0000001;
 
-  //   float diff_len_sq = diff_x * diff_x + diff_y * diff_y;
-  //   float mult = gravity / diff_len_sq;
+  positions<<<blocks, CUDA_BLOCK_SIZE>>>(positions_velocities_GPU, count, timestep);
+  CHECK(cudaGetLastError());
+  CHECK(cudaDeviceSynchronize());
 
-  //   velocities_x[i] += mult * diff_x;
-  //   velocities_y[i] += mult * diff_y;
-  // }
-
-  // double timestep = (timer.get_elapsed_ns() - start) * 0.0000001;
-
-  // // Compute positions
-  // for (unsigned i = 0; i < count; i++)
-  // {
-  //   positions_x[i] += velocities_x[i] * timestep;
-  //   positions_y[i] += velocities_y[i] * timestep;
-  // }
+  CHECK(cudaMemcpy(positions_velocities, positions_velocities_GPU, 2 * count * sizeof(float), cudaMemcpyDeviceToHost));
+  CHECK(cudaGetLastError());
+  CHECK(cudaDeviceSynchronize());
 
   return positions_velocities;
 }

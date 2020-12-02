@@ -1,7 +1,5 @@
 #include "simulator_single_simd.hpp"
 
-// CPUSimulatorSingle represents a single-core CPU particle physics simulator using AVX vector instructions
-
 int SimulatorSingleSIMD::Init(int particles, int area_width, int area_height)
 {
   count = util::round_up(particles, 8);

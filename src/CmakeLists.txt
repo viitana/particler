@@ -22,7 +22,6 @@ find_package(OpenGL REQUIRED)
 # Include headers for OpenGL and freeglut
 include_directories (${OPENGL_INCLUDE_DIRS} freeglut/include)
 
-
 # CUDA parts, compiled separately as a lib
 add_library(particles-cuda "${SRC_CUDA}")
 
@@ -37,3 +36,12 @@ set_property(TARGET particles-cuda PROPERTY CUDA_ARCHITECTURES 60 61 62 70 72)
 
 # Link everything
 target_link_libraries(particles ${OPENGL_LIBRARIES} freeglut_static particles-cuda)
+# Check OpenMP
+find_package(OpenMP)
+
+# Link everything
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(particles ${OPENGL_LIBRARIES} freeglut_static particles-cuda OpenMP::OpenMP_CXX)
+else()
+    target_link_libraries(particles ${OPENGL_LIBRARIES} freeglut_static particles-cuda)
+endif()

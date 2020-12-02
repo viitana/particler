@@ -10,10 +10,10 @@ namespace util
 {
   inline int min(int a, int b) { return a < b ? a : b; }
 
-  int round_up(const int& n, const int& multiple)
+  int round_up(const int n, const int multiple)
   {
     if (multiple == 0) return n;
-    int remainder = n & multiple;
+    int remainder = n % multiple;
     if (remainder == 0) return n;
     return n + multiple - remainder;
   }

@@ -1,4 +1,3 @@
-#include <thread>
 #include <vector>
 #include <chrono>
 #include <cmath>
@@ -21,10 +20,10 @@
 #include <immintrin.h>
 #include <limits>
 
-const int windowW = 1280;
-const int windowH = 720;
+const int windowW = 1920;
+const int windowH = 1080;
 
-int particles = 2000;
+int particles = 40960; //5120;
 const float gravity = 0.01f;
 
 const bool limit_refresh = false;
@@ -47,11 +46,11 @@ Simulator* sim = nullptr;
 void init_simulation()
 {
   // Init simulator
-  sim = new SimulatorSingleCPU();
+  //sim = new SimulatorSingleCPU();
   //sim = new SimulatorMultiCPU();
   //sim = new SimulatorSingleSIMD();
   //sim = new SimulatorMultiSIMD();
-  //sim = new SimulatorGPU();
+  sim = new SimulatorGPU();
 
   particles = sim->Init(particles, windowW, windowH);
 }

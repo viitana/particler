@@ -1,6 +1,5 @@
 #include "simulator_multi_simd.hpp"
 
-// CPUSimulatorSingle represents a single-core CPU particle physics simulator using AVX vector instructions
 int SimulatorMultiSIMD::Init(int particles, int area_width, int area_height)
 {
   count = util::round_up(particles, 8);
@@ -13,7 +12,7 @@ int SimulatorMultiSIMD::Init(int particles, int area_width, int area_height)
   velocities_x = new float[count];
   velocities_y = new float[count];
 
-  util::init_particles_random(
+  util::init_particles_circle(
     positions_x,
     positions_y,
     velocities_x,
@@ -32,9 +31,7 @@ float* SimulatorMultiSIMD::Update(float gravity)
 
   float gravity_mult = 1.f / gravity;
 
-  const __m256 v_one = _mm256_set1_ps(1.f);
   const __m256 v_gravity = _mm256_set1_ps(gravity);
-  const __m256 v_float_min = _mm256_set1_ps(std::numeric_limits<float>::min());
 
   float velocity_add_x[8];
   float velocity_add_y[8];
@@ -98,8 +95,6 @@ float* SimulatorMultiSIMD::Update(float gravity)
         v_new_velocities_x = _mm256_add_ps(v_new_velocities_x, v_vx_add);
         v_new_velocities_y = _mm256_add_ps(v_new_velocities_y, v_vy_add);
       }
-
-      
     }
 
     _mm256_storeu_ps(&velocity_add_x[0], v_new_velocities_x);
